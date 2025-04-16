@@ -5,6 +5,7 @@ import Admin from '../models/Admin.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Notification from '../models/Notification.js';
 import { createNotification } from './notificationController.js';
+import { tracedGeminiCall } from '../utils/langsmithTracer.js';
 
 // Update resource management
 export const updateResourceManagement = async (req, res) => {
@@ -1631,7 +1632,7 @@ export const analyzePriorityWithGemini = async (req, res) => {
 
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
             const model = genAI.getGenerativeModel({
-                model: "gemini-1.0-pro",
+                model: "gemini-2.0-flash",
                 generationConfig: {
                     temperature: 0.7,
                     topK: 40,
@@ -1640,33 +1641,36 @@ export const analyzePriorityWithGemini = async (req, res) => {
                 }
             });
 
-            const prompt = {
-                contents: [{
-                    parts: [{
-                        text: `
-                            Analyze the following grievance details and determine its priority level:
-                            
-                            Title: ${title}
-                            Description: ${description}
-                            Department: ${department}
-                            
-                            Please analyze the severity, urgency, and impact of this grievance.
-                            Consider factors like public safety, service disruption, and time sensitivity.
-                            
-                            Respond in this exact format:
-                            PRIORITY: [High/Medium/Low]
-                            PRIORITY_EXPLANATION: [Brief explanation]
-                            IMPACT_ASSESSMENT: [Impact analysis]
-                            RECOMMENDED_RESPONSE_TIME: [Timeframe]
-                        `
-                    }]
-                }]
-            };
+            const prompt = `
+                Analyze the following grievance details and determine its priority level:
+                
+                Title: ${title}
+                Description: ${description}
+                Department: ${department}
+                
+                Please analyze the severity, urgency, and impact of this grievance.
+                Consider factors like public safety, service disruption, and time sensitivity.
+                
+                Respond in this exact format:
+                PRIORITY: [High/Medium/Low]
+                PRIORITY_EXPLANATION: [Brief explanation]
+                IMPACT_ASSESSMENT: [Impact analysis]
+                RECOMMENDED_RESPONSE_TIME: [Timeframe]
+            `;
 
             try {
-                const result = await model.generateContent(prompt);
-                const response = await result.response;
-                const priorityResponse = response.text();
+                const result = await tracedGeminiCall(
+                    (input) => model.generateContent({
+                        contents: [{
+                            parts: [{ text: input }]
+                        }]
+                    }),
+                    "PriorityAssignment",
+                    prompt,
+                    { metadata: { operation: "priority_analysis" } }
+                );
+
+                const priorityResponse = result.response.text();
 
                 // Extract priority information with better error handling
                 const priorityMatch = priorityResponse.match(/PRIORITY:\s*([^\n]+)/i);

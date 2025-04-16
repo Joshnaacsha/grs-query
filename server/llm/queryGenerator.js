@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { INTENTS } from './intentClassifier.js';
+import { tracedGeminiCall } from '../utils/langsmithTracer.js';
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -36,9 +37,14 @@ Example Response:
 
 Generate the MongoDB query:`;
 
-        const result = await model.generateContent(prompt);
-        const response = result.response;
-        const generatedText = response.text();
+        const result = await tracedGeminiCall(
+            (input) => model.generateContent(input),
+            "AdminSmartQuery",
+            prompt,
+            { metadata: { operation: "query_generation", intent } }
+        );
+
+        const generatedText = result.response.text();
 
         try {
             // Extract the MongoDB query object from the generated text

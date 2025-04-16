@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const connectDB = async () => {
     try {
-        await mongoose.connect('mongodb://localhost:27017/grievance_portal', {
+        await mongoose.connect('mongodb://localhost:27017/grievance-system', {
             useNewUrlParser: true,
             useUnifiedTopology: true,
         });

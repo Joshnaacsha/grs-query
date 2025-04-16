@@ -7,6 +7,7 @@ import Grievance from '../models/Grievance.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Official from '../models/Official.js';
 import Assignment from '../models/Assignment.js';
+import { tracedGeminiCall } from '../utils/langsmithTracer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -115,19 +116,24 @@ export const processDocument = async (req, res) => {
 
         // First, try to detect if the document is in Tamil
         const languageDetectionPrompt = "Is this document written in Tamil? Answer with 'yes' or 'no' only.";
-        const languageResult = await model.generateContent({
-            contents: [{
-                parts: [
-                    { text: languageDetectionPrompt },
-                    {
-                        inlineData: {
-                            mimeType: req.file.mimetype,
-                            data: imageData
+        const languageResult = await tracedGeminiCall(
+            (input) => model.generateContent({
+                contents: [{
+                    parts: [
+                        { text: input },
+                        {
+                            inlineData: {
+                                mimeType: req.file.mimetype,
+                                data: imageData
+                            }
                         }
-                    }
-                ]
-            }]
-        });
+                    ]
+                }]
+            }),
+            "DocumentExtraction",
+            languageDetectionPrompt,
+            { metadata: { operation: "language_detection" } }
+        );
 
         const isTamil = languageResult.response.text().toLowerCase().includes('yes');
 
@@ -135,36 +141,46 @@ export const processDocument = async (req, res) => {
         let englishText;
         if (isTamil) {
             const translationPrompt = "Translate this Tamil document to English. Provide only the English translation.";
-            const translationResult = await model.generateContent({
-                contents: [{
-                    parts: [
-                        { text: translationPrompt },
-                        {
-                            inlineData: {
-                                mimeType: req.file.mimetype,
-                                data: imageData
+            const translationResult = await tracedGeminiCall(
+                (input) => model.generateContent({
+                    contents: [{
+                        parts: [
+                            { text: input },
+                            {
+                                inlineData: {
+                                    mimeType: req.file.mimetype,
+                                    data: imageData
+                                }
                             }
-                        }
-                    ]
-                }]
-            });
+                        ]
+                    }]
+                }),
+                "DocumentExtraction",
+                translationPrompt,
+                { metadata: { operation: "tamil_translation" } }
+            );
             englishText = translationResult.response.text();
         } else {
             // If English, extract text directly
             const textExtractionPrompt = "Extract the text from this document.";
-            const textResult = await model.generateContent({
-                contents: [{
-                    parts: [
-                        { text: textExtractionPrompt },
-                        {
-                            inlineData: {
-                                mimeType: req.file.mimetype,
-                                data: imageData
+            const textResult = await tracedGeminiCall(
+                (input) => model.generateContent({
+                    contents: [{
+                        parts: [
+                            { text: input },
+                            {
+                                inlineData: {
+                                    mimeType: req.file.mimetype,
+                                    data: imageData
+                                }
                             }
-                        }
-                    ]
-                }]
-            });
+                        ]
+                    }]
+                }),
+                "DocumentExtraction",
+                textExtractionPrompt,
+                { metadata: { operation: "text_extraction" } }
+            );
             englishText = textResult.response.text();
         }
 
@@ -186,11 +202,16 @@ export const processDocument = async (req, res) => {
 
         Text to analyze: ${englishText}`;
 
-        const extractionResult = await model.generateContent({
-            contents: [{
-                parts: [{ text: extractionPrompt }]
-            }]
-        });
+        const extractionResult = await tracedGeminiCall(
+            (input) => model.generateContent({
+                contents: [{
+                    parts: [{ text: input }]
+                }]
+            }),
+            "DocumentExtraction",
+            extractionPrompt,
+            { metadata: { operation: "field_extraction" } }
+        );
 
         // Parse the response text to extract information
         const responseText = extractionResult.response.text();

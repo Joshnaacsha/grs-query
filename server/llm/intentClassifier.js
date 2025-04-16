@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { tracedGeminiCall } from '../utils/langsmithTracer.js';
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -92,9 +93,14 @@ Parameters: ${JSON.stringify(parameters, null, 2)}
 Provide a natural, conversational response that addresses the user's query, takes into account the previous conversation context, and includes relevant information from the results.`;
         }
 
-        const result = await model.generateContent(prompt);
-        const response = result.response;
-        return response.text();
+        const result = await tracedGeminiCall(
+            (input) => model.generateContent(input),
+            "AdminSmartQuery",
+            prompt,
+            { metadata: { operation: "response_generation", intent } }
+        );
+
+        return result.response.text();
     } catch (error) {
         console.error('Error generating response:', error);
         return 'I apologize, but I encountered an error while generating a response. Please try again.';
@@ -117,9 +123,14 @@ export async function classifyIntent(query) {
         
         Respond with ONLY the intent, nothing else.`;
 
-        const result = await model.generateContent(prompt);
-        const response = result.response;
-        const generatedText = response.text().toLowerCase();
+        const result = await tracedGeminiCall(
+            (input) => model.generateContent(input),
+            "AdminSmartQuery",
+            prompt,
+            { metadata: { operation: "intent_classification" } }
+        );
+
+        const generatedText = result.response.text().toLowerCase();
 
         const intentMatch = Object.values(INTENTS).find(intent =>
             generatedText.includes(intent.toLowerCase())

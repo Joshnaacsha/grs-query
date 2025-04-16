@@ -24,6 +24,7 @@ import ElectricityDashboard from "./official_dept/Electricity";
 import SubmitGrievance from './pages/SubmitGrievance';
 import Settings from './pages/Settings';
 import { Toaster } from 'react-hot-toast';
+import MetricsDashboard from "./components/admin/MetricsDashboard";
 
 function App() {
   useEffect(() => {
@@ -83,6 +84,7 @@ function App() {
             <Route path="/admin/resource-management" element={<AdminDashboard />} />
             <Route path="/admin/settings" element={<Settings />} />
             <Route path="/admin/smart-query" element={<AdminDashboard />} />
+            <Route path="/admin/metrics" element={<MetricsDashboard />} />
           </Route>
 
           {/* Protected Official Routes */}

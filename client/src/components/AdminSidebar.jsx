@@ -1,6 +1,6 @@
 import React from 'react';
 import { Nav } from 'react-bootstrap';
-import { LayoutDashboard, AlertTriangle, Database, Settings, LogOut, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, AlertTriangle, Database, Settings, LogOut, MessageSquare, BarChart2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const AdminSidebar = ({ activeTab, onTabChange }) => {
@@ -22,6 +22,9 @@ const AdminSidebar = ({ activeTab, onTabChange }) => {
                 break;
             case 'smart-query':
                 navigate('/admin/smart-query');
+                break;
+            case 'metrics':
+                navigate('/admin/metrics');
                 break;
             default:
                 navigate('/admin/dashboard');
@@ -75,6 +78,15 @@ const AdminSidebar = ({ activeTab, onTabChange }) => {
                 >
                     <MessageSquare size={20} className="me-2" />
                     <span>Smart Query</span>
+                </Nav.Link>
+
+                <Nav.Link
+                    onClick={() => handleNavigation('metrics')}
+                    className={`d-flex align-items-center px-3 py-2 mb-1 ${activeTab === 'metrics' ? 'active bg-primary' : 'text-white-50'}`}
+                    style={{ cursor: 'pointer' }}
+                >
+                    <BarChart2 size={20} className="me-2" />
+                    <span>API Metrics</span>
                 </Nav.Link>
 
                 <Nav.Link

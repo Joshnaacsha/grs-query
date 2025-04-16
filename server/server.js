@@ -19,6 +19,7 @@ import { Server } from 'socket.io';
 import cron from 'node-cron';
 import { checkEligibleEscalations } from './controllers/grievanceController.js';
 import smartQueryRouter from './routes/smartQuery.js';
+import metricsRoutes from './routes/metricsRoutes.js';
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -81,6 +82,7 @@ app.use('/api/grievances', grievanceRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/smart-query', smartQueryRouter);
+app.use('/api/metrics', metricsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
