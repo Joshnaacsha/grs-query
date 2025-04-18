@@ -1304,6 +1304,15 @@ export const respondToEscalation = async (req, res) => {
                 if (!grievance.assignedOfficials) {
                     grievance.assignedOfficials = [];
                 }
+
+                // Remove previous official first
+                if (previousOfficialId) {
+                    grievance.assignedOfficials = grievance.assignedOfficials.filter(
+                        official => official.toString() !== previousOfficialId.toString()
+                    );
+                }
+
+                // Add new official
                 if (!grievance.assignedOfficials.includes(newAssignedTo)) {
                     grievance.assignedOfficials.push(newAssignedTo);
                 }
@@ -1318,15 +1327,6 @@ export const respondToEscalation = async (req, res) => {
                         date: new Date(),
                         description: `${grievance.priority} Priority Grievance reassigned to ${newOfficial.firstName} ${newOfficial.lastName}. Previous resource requirements and in-progress status maintained.`
                     });
-
-                    // Notification for new official about existing resources and status
-                    await Notification.create({
-                        recipient: newAssignedTo,
-                        recipientType: 'Official',
-                        type: 'CASE_REASSIGNED',
-                        message: `You have been assigned grievance #${grievance.petitionId} which is currently in-progress. This case has existing resource requirements that were previously submitted.`,
-                        grievanceId: grievance._id
-                    });
                 } else {
                     // Only set to assigned if it wasn't in-progress
                     grievance.status = 'assigned';
@@ -1337,50 +1337,48 @@ export const respondToEscalation = async (req, res) => {
                         date: new Date(),
                         description: `${grievance.priority} Priority Grievance reassigned to ${newOfficial.firstName} ${newOfficial.lastName}`
                     });
+                }
 
-                    // Regular notification for new official
-                    await Notification.create({
+                // Create notifications in parallel
+                const notificationPromises = [];
+
+                // Notification for new official
+                notificationPromises.push(
+                    Notification.create({
                         recipient: newAssignedTo,
                         recipientType: 'Official',
                         type: 'CASE_REASSIGNED',
-                        message: `You have been assigned grievance #${grievance.petitionId}. Please review and submit resource requirements if needed.`,
+                        message: `You have been assigned grievance #${grievance.petitionId}${previousStatus === 'in-progress' ? ' which is currently in-progress. This case has existing resource requirements that were previously submitted.' : '. Please review and submit resource requirements if needed.'}`,
                         grievanceId: grievance._id
-                    });
-                }
+                    })
+                );
 
                 // Notification for the previous official
                 if (previousOfficialId) {
-                    await Notification.create({
-                        recipient: previousOfficialId,
-                        recipientType: 'Official',
-                        type: 'REASSIGNMENT',
-                        message: `WARNING: Your ${grievance.priority.toLowerCase()} priority grievance #${grievance.petitionId} has been reassigned from you to ${newOfficial.firstName} ${newOfficial.lastName}. This reassignment was made by an admin.`,
-                        grievanceId: grievance._id
-                    });
+                    notificationPromises.push(
+                        Notification.create({
+                            recipient: previousOfficialId,
+                            recipientType: 'Official',
+                            type: 'REASSIGNMENT',
+                            message: `WARNING: Your ${grievance.priority.toLowerCase()} priority grievance #${grievance.petitionId} has been reassigned from you to ${newOfficial.firstName} ${newOfficial.lastName}. This reassignment was made by an admin.`,
+                            grievanceId: grievance._id
+                        })
+                    );
                 }
 
-                // Notification for new official
-                await Notification.create({
-                    recipient: newAssignedTo,
-                    recipientType: 'Official',
-                    type: 'CASE_REASSIGNED',
-                    message: `You have been assigned grievance #${grievance.petitionId}${previousStatus === 'in-progress' ? ' which is currently in-progress. This case has existing resource requirements that were previously submitted.' : '. Please review and submit resource requirements if needed.'}`,
-                    grievanceId: grievance._id
-                });
-
                 // Notification for the petitioner
-                await Notification.create({
-                    recipient: grievance.petitioner._id,
-                    recipientType: 'Petitioner',
-                    type: 'CASE_REASSIGNED',
-                    message: `Your grievance #${grievance.petitionId} has been reassigned to a new official${previousStatus === 'in-progress' ? ' and will continue in progress' : ''}. Admin Response: ${escalationResponse.trim()}`,
-                    grievanceId: grievance._id
-                });
-
-                // Remove the previous official from assignedOfficials array
-                grievance.assignedOfficials = grievance.assignedOfficials.filter(
-                    official => official.toString() !== previousOfficialId.toString()
+                notificationPromises.push(
+                    Notification.create({
+                        recipient: grievance.petitioner._id,
+                        recipientType: 'Petitioner',
+                        type: 'CASE_REASSIGNED',
+                        message: `Your grievance #${grievance.petitionId} has been reassigned to a new official${previousStatus === 'in-progress' ? ' and will continue in progress' : ''}. Admin Response: ${escalationResponse.trim()}`,
+                        grievanceId: grievance._id
+                    })
                 );
+
+                // Wait for all notifications to be created
+                await Promise.all(notificationPromises);
 
             } catch (error) {
                 console.error('Error during reassignment:', error);
@@ -1428,7 +1426,7 @@ export const respondToEscalation = async (req, res) => {
 
         // Add timeline entry for escalation response
         grievance.timelineStages.push({
-            stageName: 'Escalation Resolution',
+            stageName: 'Resolution',
             date: new Date(),
             description: `Escalation addressed by Admin with response: ${escalationResponse.trim()}`
         });

@@ -31,7 +31,7 @@ const SubmitGrievance = () => {
 
     // Pre-fill user data if available
     const [userData] = useState({
-        name: user?.name || '',
+        name: user?.name || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || user?.lastName || ''),
         email: user?.email || ''
     });
 

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/WaterBoard.css";
 import NavBar_Departments from "../components/NavBar_Departments";
 import { useAuth } from "../context/AuthContext";
-import { FaSearch, FaUser, FaSignOutAlt, FaCheck, FaPlay, FaCheckCircle, FaClock, FaClipboardList, FaComments, FaTimes, FaEye, FaTools } from 'react-icons/fa';
+import { FaSearch, FaUser, FaSignOutAlt, FaCheck, FaPlay, FaCheckCircle, FaClock, FaClipboardList, FaComments, FaTimes, FaEye, FaTools, FaDownload } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import ChatComponent from '../components/ChatComponent';
 import "../styles/Chat.css";
@@ -197,7 +197,7 @@ const ElectricityDashboard = () => {
           }
 
           const priorityData = await priorityResponse.json();
-          
+
           return {
             ...grievance,
             grievanceId: grievance.petitionId || grievance.grievanceId || 'N/A',
@@ -531,6 +531,28 @@ const ElectricityDashboard = () => {
                     </p>
                     <p className="text-sm text-gray-500">{selectedGrievance.assignedTo.email}</p>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {selectedGrievance.originalDocument && (
+              <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Original Document</h3>
+                <div className="flex flex-col gap-2">
+                  <p className="text-gray-700">
+                    <span className="font-medium">Filename:</span> {selectedGrievance.originalDocument.filename}
+                  </p>
+                  <p className="text-gray-700">
+                    <span className="font-medium">Uploaded:</span> {new Date(selectedGrievance.originalDocument.uploadedAt).toLocaleString()}
+                  </p>
+                  <a
+                    href={`http://localhost:5000/${selectedGrievance.originalDocument.path}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary mt-3"
+                  >
+                    <FaDownload className="mr-2" /> View/Download Document
+                  </a>
                 </div>
               </div>
             )}
